@@ -1,774 +1,741 @@
 <!DOCTYPE html>
-<html lang="zh-Hant">
+<html lang="zh-HK">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>🏓 Table Tennis Professional Scoreboard</title>
-    <!-- 引入 SheetJS 用於匯出 Excel -->
+    <!-- 載入 SheetJS 用於導出原生 Excel 檔案 -->
     <script src="https://cdn.jsdelivr.net/npm/xlsx@0.18.5/dist/xlsx.full.min.js"></script>
     <style>
         :root {
-            --bg-color: #faf8f0;
-            --card-bg: #ffffff;
+            --bg-color: #FAF8F0;
+            --card-bg: #FFFFFF;
             --text-color: #282828;
-            --p1-color: #ff7878;
-            --p2-color: #64b4ff;
-            --accent-color: #ffc864;
-            --serve-color: #ff8c00;
-            --btn-hover: #e0e0e0;
-            --disabled-color: #cccccc;
+            --p1-color: #FF5A5A;
+            --p2-color: #3C96FF;
+            --accent-color: #FFC864;
+            --serve-color: #FF8C00;
+            --pause-color: #DC3232;
+            --wtt-bg: #0F172A;
         }
 
         body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Microsoft JhengHei", sans-serif;
+            font-family: 'Microsoft JhengHei', 'PingFang TC', Arial, sans-serif;
             background-color: var(--bg-color);
             color: var(--text-color);
             margin: 0;
-            padding: 15px;
-            user-select: none;
-            box-sizing: border-box;
-            min-height: 100vh;
+            padding: 20px;
             display: flex;
             flex-direction: column;
-            justify-content: space-between;
+            align-items: center;
+            user-select: none;
         }
 
-        /* Top Controls */
-        .top-bar {
+        /* 工具列 */
+        .toolbar {
             display: flex;
-            justify-content: space-between;
-            align-items: center;
             flex-wrap: wrap;
             gap: 10px;
-            margin-bottom: 10px;
+            justify-content: center;
+            margin-bottom: 20px;
+            width: 100%;
+            max-width: 1000px;
         }
 
-        .controls-group {
-            display: flex;
-            gap: 8px;
-            flex-wrap: wrap;
-        }
-
-        .btn {
-            background-color: var(--card-bg);
-            border: 2px solid var(--text-color);
-            border-radius: 8px;
-            padding: 6px 12px;
+        button {
+            padding: 8px 14px;
             font-size: 14px;
             font-weight: bold;
+            border: 2px solid var(--text-color);
+            border-radius: 8px;
+            background-color: var(--card-bg);
             cursor: pointer;
             transition: all 0.2s;
         }
 
-        .btn:hover:not(:disabled) {
-            background-color: var(--btn-hover);
+        button:hover {
+            background-color: #E0E0E0;
         }
 
-        .btn:disabled {
-            background-color: var(--disabled-color);
-            color: #888;
+        button:disabled {
+            background-color: #D6D6D6;
             cursor: not-allowed;
-            border-color: #aaa;
+            opacity: 0.6;
         }
 
-        .match-timer {
-            font-size: 22px;
-            font-weight: bold;
-        }
+        .btn-accent { background-color: var(--accent-color); }
+        .btn-yellow { background-color: #F5C81E; }
+        .btn-red { background-color: #EB3232; color: white; }
 
-        /* Match Info Header */
+        /* 比賽資訊列 */
         .match-info {
             text-align: center;
-            font-size: 18px;
-            color: #555;
-            margin-bottom: 15px;
+            font-size: 20px;
             font-weight: bold;
+            margin-bottom: 15px;
         }
 
-        /* Main Scoreboard Layout */
-        .scoreboard-container {
+        /* 主計分板區塊 */
+        .scoreboard {
             display: flex;
             justify-content: center;
             align-items: center;
             gap: 20px;
-            flex-grow: 1;
+            width: 100%;
+            max-width: 1000px;
+            position: relative;
         }
 
-        .player-card {
+        .card {
             background: var(--card-bg);
             border: 3px solid var(--text-color);
             border-radius: 20px;
-            width: 320px;
+            width: 420px;
             padding: 20px;
-            text-align: center;
-            position: relative;
             box-shadow: 0 4px 10px rgba(0,0,0,0.05);
-        }
-
-        /* Dog Avatar */
-        .dog-avatar {
-            width: 80px;
-            height: 50px;
-            margin: 0 auto 10px auto;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
             position: relative;
         }
 
-        .serve-badge {
-            position: absolute;
-            top: -15px;
-            left: 50%;
-            transform: translateX(-50%);
-            background: var(--serve-color);
-            color: white;
-            padding: 4px 12px;
-            border-radius: 10px;
-            font-size: 12px;
-            font-weight: bold;
-            visibility: hidden;
-        }
-
-        .serve-badge.active {
-            visibility: visible;
-        }
-
-        .player-name {
-            font-size: 20px;
-            font-weight: bold;
-            cursor: pointer;
-            margin-bottom: 15px;
-            display: inline-block;
-        }
-
-        .player-name:hover {
-            text-decoration: underline;
-        }
-
-        .score-display {
-            font-size: 80px;
-            font-weight: bold;
-            line-height: 1;
-            margin: 15px 0;
-            cursor: pointer;
-        }
-
-        .vs-label {
-            font-size: 28px;
-            font-weight: bold;
-        }
-
-        .score-actions {
-            display: flex;
-            justify-content: center;
-            gap: 10px;
-            margin-bottom: 15px;
-        }
-
-        .card-footer-btns {
+        .card-header {
             display: flex;
             justify-content: space-between;
+            align-items: center;
+            width: 100%;
+            height: 40px;
+        }
+
+        .cards-display {
+            display: flex;
             gap: 5px;
         }
 
-        /* Bottom Controls & Watermark */
-        .bottom-bar {
+        .penalty-card {
+            width: 20px;
+            height: 30px;
+            border-radius: 4px;
+            border: 1px solid #000;
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            margin-top: 15px;
-            flex-wrap: wrap;
-        }
-
-        .watermark {
-            font-size: 14px;
-            color: #a0a0a0;
-            text-align: right;
-            margin-left: auto;
-        }
-
-        /* Modals / Dialogs */
-        .modal-overlay {
-            position: fixed;
-            top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.6);
-            display: flex;
             justify-content: center;
-            align-items: center;
-            z-index: 1000;
+            font-size: 12px;
+            font-weight: bold;
+        }
+
+        .serve-badge {
+            background-color: var(--serve-color);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 10px;
+            font-size: 14px;
             visibility: hidden;
         }
 
-        .modal-overlay.active {
-            visibility: visible;
-        }
+        .serve-badge.active { visibility: visible; }
 
-        .modal-box {
-            background: var(--card-bg);
-            border: 3px solid var(--text-color);
-            border-radius: 15px;
-            padding: 25px;
-            width: 400px;
-            max-width: 90%;
-            text-align: center;
-        }
-
-        .modal-title {
-            font-size: 20px;
+        .player-name {
+            font-size: 24px;
             font-weight: bold;
+            margin: 15px 0;
+            cursor: pointer;
+            padding: 5px 15px;
+            border-radius: 8px;
+        }
+
+        .player-name:hover { background-color: #F0F0F0; }
+
+        .score-box {
+            background-color: #F5F5F5;
+            border: 2px solid #C8C8C8;
+            border-radius: 15px;
+            width: 220px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 90px;
+            font-weight: bold;
+            cursor: pointer;
             margin-bottom: 15px;
         }
 
-        .modal-body {
-            font-size: 16px;
-            margin-bottom: 20px;
-        }
+        .p1-score { color: var(--p1-color); }
+        .p2-score { color: var(--p2-color); }
 
-        .modal-timer-num {
-            font-size: 60px;
-            font-weight: bold;
-            margin: 10px 0;
-        }
-
-        .modal-btns {
+        .control-btns {
             display: flex;
+            gap: 10px;
+            margin-bottom: 10px;
+        }
+
+        .vs-label {
+            font-size: 48px;
+            font-weight: bold;
+        }
+
+        /* WTT Banner & Banner 提示 */
+        .banner {
+            margin-top: 20px;
+            padding: 12px 25px;
+            border-radius: 10px;
+            font-size: 18px;
+            font-weight: bold;
+            display: none;
+            text-align: center;
+            max-width: 800px;
+        }
+
+        .wtt-banner {
+            background-color: var(--wtt-bg);
+            color: white;
+            border: 2px solid var(--serve-color);
+        }
+
+        .win-banner {
+            background-color: #FFE196;
+            color: #B43200;
+            border: 2px solid #E6AA00;
+            font-size: 24px;
+        }
+
+        /* 暫停彈窗 */
+        .overlay {
+            position: fixed;
+            top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.6);
+            display: none;
             justify-content: center;
-            gap: 15px;
+            align-items: center;
+            z-index: 100;
+        }
+
+        .timeout-modal {
+            background: white;
+            padding: 30px;
+            border-radius: 20px;
+            border: 5px solid var(--pause-color);
+            text-align: center;
+            width: 400px;
+        }
+
+        .watermark {
+            margin-top: 30px;
+            color: #969696;
+            font-size: 14px;
+            font-weight: bold;
         }
     </style>
 </head>
 <body>
 
-    <!-- Top Controls -->
-    <div class="top-bar">
-        <div class="controls-group">
-            <button class="btn" id="btn-voice" onclick="toggleVoiceMode()">🔊 Voice: English</button>
-            <button class="btn" id="btn-say-name" onclick="toggleSayName()">🗣️ Say Name: ON</button>
-            <button class="btn" id="btn-say-swap" onclick="toggleSaySwap()">🔄 Switch Voice: ON</button>
-        </div>
-        <div class="match-timer" id="match-timer-display">Time: 00:00 [PAUSED]</div>
+    <!-- 工具列 -->
+    <div class="toolbar">
+        <button id="btn-voice" onclick="toggleVoice()">🔊 語音: 廣東話</button>
+        <button id="btn-say-name" onclick="toggleSayName()">🗣️ 報姓名: ON</button>
+        <button id="btn-say-swap" onclick="toggleSaySwap()">🔄 換邊提示: ON</button>
+        <button onclick="editPlayerNames()">✏️ 修改姓名</button>
+        <button id="btn-switch-serve" class="btn-accent" onclick="manualSwitchServe()" style="display:none;">🏓 換發球</button>
+        <button id="btn-pause" onclick="togglePause()">⏸️ 暫停計時</button>
+        <button class="btn-accent" onclick="exportExcel()">📊 Export Excel</button>
     </div>
 
-    <!-- Match Info Header -->
-    <div class="match-info" id="match-info-display">
-        Game 1 (Best of 5) | Total Games (0 : 0)
+    <!-- 比賽資訊 -->
+    <div class="match-info">
+        <span id="match-timer">Time: 00:00</span> | 
+        <span id="game-info">Game 1 (Best of 5) | Total Games (0 : 0)</span>
     </div>
 
-    <!-- Main Scoreboard -->
-    <div class="scoreboard-container">
-        <!-- Player 1 Card -->
-        <div class="player-card">
-            <div class="serve-badge" id="p1-serve">🏓 SERVING</div>
-            <svg class="dog-avatar" viewBox="0 0 100 70">
-                <polygon points="20,25 5,45 25,40" fill="#ff7878" stroke="#282828" stroke-width="2"/>
-                <polygon points="80,25 95,45 75,40" fill="#ff7878" stroke="#282828" stroke-width="2"/>
-                <ellipse cx="50" cy="45" rx="35" ry="25" fill="#ffffff" stroke="#282828" stroke-width="3"/>
-                <circle cx="38" cy="42" r="4" fill="#282828"/>
-                <circle cx="62" cy="42" r="4" fill="#282828"/>
-                <circle cx="50" cy="52" r="5" fill="#282828"/>
-            </svg>
-            <div class="player-name" id="p1-name-display" onclick="editPlayerName(1)">✏️ Player 1</div>
-            <div class="score-display" onclick="addScore(1)" id="p1-score-display">0</div>
-            <div class="score-actions">
-                <button class="btn" onclick="addScore(1)">+1 (←)</button>
-                <button class="btn" onclick="subScore(1)">-1 (↑)</button>
+    <!-- 主計分板 -->
+    <div class="scoreboard">
+        <!-- Player 1 卡片 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="cards-display" id="p1-cards"></div>
+                <div class="serve-badge" id="p1-serve">🏓 SERVING</div>
             </div>
-            <div class="card-footer-btns">
-                <button class="btn" id="p1-timeout-btn" onclick="useTimeout(1)">⏸️ Timeout (1)</button>
-                <button class="btn" id="p1-challenge-btn" onclick="useChallenge(1)">👁️ Challenge (2)</button>
+            <div class="player-name" id="p1-name-display" onclick="editSingleName(1)">✏️ Player 1</div>
+            <div class="score-box p1-score" onclick="addScore(1)" id="p1-score-display">0</div>
+            <div class="control-btns">
+                <button onclick="addScore(1)">+1 (←)</button>
+                <button onclick="subScore(1)">-1 (↑)</button>
+            </div>
+            <div class="control-btns">
+                <button id="p1-timeout-btn" onclick="triggerTimeout(1)">⏸️ Timeout (1)</button>
+                <button id="p1-challenge-btn" onclick="useChallenge(1)">👁️ Challenge (2)</button>
+                <button class="btn-yellow" onclick="issueCard(1, 'yellow')">🟨</button>
+                <button class="btn-red" onclick="issueCard(1, 'red')">🟥</button>
             </div>
         </div>
 
         <div class="vs-label">VS</div>
 
-        <!-- Player 2 Card -->
-        <div class="player-card">
-            <div class="serve-badge" id="p2-serve">🏓 SERVING</div>
-            <svg class="dog-avatar" viewBox="0 0 100 70">
-                <polygon points="20,25 5,45 25,40" fill="#64b4ff" stroke="#282828" stroke-width="2"/>
-                <polygon points="80,25 95,45 75,40" fill="#64b4ff" stroke="#282828" stroke-width="2"/>
-                <ellipse cx="50" cy="45" rx="35" ry="25" fill="#ffffff" stroke="#282828" stroke-width="3"/>
-                <circle cx="38" cy="42" r="4" fill="#282828"/>
-                <circle cx="62" cy="42" r="4" fill="#282828"/>
-                <circle cx="50" cy="52" r="5" fill="#282828"/>
-            </svg>
-            <div class="player-name" id="p2-name-display" onclick="editPlayerName(2)">✏️ Player 2</div>
-            <div class="score-display" onclick="addScore(2)" id="p2-score-display">0</div>
-            <div class="score-actions">
-                <button class="btn" onclick="addScore(2)">+1 (→)</button>
-                <button class="btn" onclick="subScore(2)">-1 (↓)</button>
+        <!-- Player 2 卡片 -->
+        <div class="card">
+            <div class="card-header">
+                <div class="cards-display" id="p2-cards"></div>
+                <div class="serve-badge" id="p2-serve">🏓 SERVING</div>
             </div>
-            <div class="card-footer-btns">
-                <button class="btn" id="p2-timeout-btn" onclick="useTimeout(2)">⏸️ Timeout (1)</button>
-                <button class="btn" id="p2-challenge-btn" onclick="useChallenge(2)">👁️ Challenge (2)</button>
+            <div class="player-name" id="p2-name-display" onclick="editSingleName(2)">✏️ Player 2</div>
+            <div class="score-box p2-score" onclick="addScore(2)" id="p2-score-display">0</div>
+            <div class="control-btns">
+                <button onclick="addScore(2)">+1 (→)</button>
+                <button onclick="subScore(2)">-1 (↓)</button>
+            </div>
+            <div class="control-btns">
+                <button id="p2-timeout-btn" onclick="triggerTimeout(2)">⏸️ Timeout (1)</button>
+                <button id="p2-challenge-btn" onclick="useChallenge(2)">👁️ Challenge (2)</button>
+                <button class="btn-yellow" onclick="issueCard(2, 'yellow')">🟨</button>
+                <button class="btn-red" onclick="issueCard(2, 'red')">🟥</button>
             </div>
         </div>
     </div>
 
-    <!-- Bottom System Bar & Watermark -->
-    <div class="bottom-bar">
-        <div class="controls-group">
-            <button class="btn" onclick="togglePause()">⏸️ Pause / ▶️ Resume (P)</button>
-            <button class="btn" onclick="exportExcel()">Export Excel (E)</button>
-        </div>
-        <div class="watermark">
-            MADE BY <b>RAGEN CHEUNG</b>, DO NOT SEND TO OTHERS. 由<b>張庭浚</b>製作，不得轉發。
-        </div>
-    </div>
+    <!-- 提示框區 -->
+    <div id="wtt-banner" class="banner wtt-banner"></div>
+    <div id="win-banner" class="banner win-banner"></div>
 
-    <!-- Dialog 1: Setup Modal -->
-    <div class="modal-overlay" id="setup-modal">
-        <div class="modal-box">
-            <div class="modal-title">⚙️ Rules Setting</div>
-            <div class="modal-body" style="text-align: left; display: flex; flex-direction: column; gap: 10px;">
-                <label>Best of how many games? 
-                    <input type="number" id="cfg-bestof" value="5" min="1" max="15" style="width: 100%; padding: 5px; margin-top: 4px;">
-                </label>
-                <label>Timeouts per player: 
-                    <input type="number" id="cfg-timeouts" value="1" min="0" max="10" style="width: 100%; padding: 5px; margin-top: 4px;">
-                </label>
-                <label>Challenges per player: 
-                    <input type="number" id="cfg-challenges" value="2" min="0" max="10" style="width: 100%; padding: 5px; margin-top: 4px;">
-                </label>
-            </div>
-            <button class="btn" style="background: var(--accent-color); width: 100%;" onclick="confirmSettings()">Start Match</button>
-        </div>
-    </div>
+    <!-- 水印 -->
+    <div class="watermark">MADE BY RAGEN CHEUNG, DO NOT SEND TO OTHERS. 由張庭浚製作，不得轉發。</div>
 
-    <!-- Dialog 2: Challenge Result Modal -->
-    <div class="modal-overlay" id="challenge-modal">
-        <div class="modal-box">
-            <div class="modal-title" id="challenge-modal-title">👁️ Challenge</div>
-            <div class="modal-body">Please judge the challenge result:</div>
-            <div class="modal-btns">
-                <button class="btn" style="background: #b4f0b4;" onclick="processChallengeResult(true)">✅ Successful</button>
-                <button class="btn" style="background: #ffb4b4;" onclick="processChallengeResult(false)">❌ Unsuccessful</button>
-            </div>
-        </div>
-    </div>
-
-    <!-- Dialog 3: Timeout Timer Modal -->
-    <div class="modal-overlay" id="timeout-modal">
-        <div class="modal-box">
-            <div class="modal-title" style="color: #dc5000;">⏱️ Player Timeout (1 Min)</div>
-            <div class="modal-timer-num" id="timeout-countdown-display">60s</div>
-            <button class="btn" style="background: var(--accent-color);" onclick="closeTimeoutTimerOnly()">▶️ Resume</button>
-        </div>
-    </div>
-
-    <!-- Dialog 4: Next Game / Switch Sides Modal -->
-    <div class="modal-overlay" id="gameover-modal">
-        <div class="modal-box">
-            <div class="modal-title" id="gameover-title">Game Over</div>
-            <div class="modal-body">Do you want to switch sides for the next game?</div>
-            <div class="modal-btns">
-                <button class="btn" style="background: var(--accent-color);" onclick="nextGame(true)">🔄 Switch Sides</button>
-                <button class="btn" onclick="nextGame(false)">➡️ Keep Sides</button>
-            </div>
+    <!-- 暫停 Modal -->
+    <div class="overlay" id="timeout-overlay">
+        <div class="timeout-modal">
+            <h1 style="color: var(--pause-color); margin-top:0;">⏱️ TIMEOUT</h1>
+            <p id="timeout-player-text" style="font-size: 18px; font-weight: bold;"></p>
+            <div id="timeout-timer" style="font-size: 70px; font-weight: bold; margin: 20px 0;">60s</div>
+            <button class="btn-accent" style="font-size: 18px; padding: 10px 20px;" onclick="finishTimeout()">Resume Game</button>
         </div>
     </div>
 
     <script>
-        // Game State Variables
-        let best_of_sets = 5;
-        let total_sets_to_win = 3;
-        let max_timeouts_per_player = 1;
-        let max_challenges_per_player = 2;
+        // --- 初始化參數 ---
+        let bestOfSets = parseInt(prompt("Best of how many games? (e.g. 5)", "5")) || 5;
+        let totalSetsToWin = Math.floor(bestOfSets / 2) + 1;
+        let maxTimeouts = parseInt(prompt("Timeouts per player:", "1")) || 1;
+        let maxChallenges = parseInt(prompt("Challenges per player:", "2")) || 2;
 
-        let p1_name = "Player 1";
-        let p2_name = "Player 2";
-        let score_p1 = 0;
-        let score_p2 = 0;
-        let sets_p1 = 0;
-        let sets_p2 = 0;
-        let current_game = 1;
-        let first_server = 1;
-        let current_server = 1;
+        let p1Name = "Player 1", p2Name = "Player 2";
+        let scoreP1 = 0, scoreP2 = 0;
+        let setsP1 = 0, setsP2 = 0;
+        let currentGame = 1;
+        let firstServer = 1, currentServer = 1;
 
-        let p1_timeouts_left = 1;
-        let p2_timeouts_left = 1;
-        let p1_challenges_left = 2;
-        let p2_challenges_left = 2;
+        let p1Timeouts = maxTimeouts, p2Timeouts = maxTimeouts;
+        let p1Challenges = maxChallenges, p2Challenges = maxChallenges;
 
-        // Match Timer State
-        let is_paused = true;
-        let accumulated_time = 0;
-        let timer_start_timestamp = null;
-        let timer_interval = null;
+        let p1FoulCount = 0, p2FoulCount = 0;
+        let p1Yellow = 0, p1Red = 0, p2Yellow = 0, p2Red = 0;
 
-        // Timeout Countdown State
-        let timeout_interval = null;
-        let timeout_seconds_left = 60;
+        let isPaused = false;
+        let matchStartTime = Date.now(), accumulatedPauseTime = 0, pauseStartTime = 0;
+        let gameStartTime = Date.now();
 
-        // Challenge State
-        let challenging_player = null;
+        let pointHistory = [];
+        let matchHistory = [];
+        let gameOver = false, matchOver = false;
 
-        // Voice Settings
-        let voice_mode = "english"; // "english", "cantonese", "off"
-        let say_player_name = true;
-        let say_swap_voice = true;
+        // 語音設定
+        let voiceMode = "cantonese"; // 'cantonese', 'english', 'off'
+        let sayPlayerName = true;
+        let saySwapVoice = true;
 
-        let match_history = [];
-        let game_over = false;
-        let match_over = false;
+        // 暫停計時
+        let timeoutInterval = null, timeoutRemaining = 60;
 
-        // On Load: Prompt Setup Modal
-        window.onload = () => {
-            document.getElementById('setup-modal').classList.add('active');
-        };
-
-        function confirmSettings() {
-            best_of_sets = parseInt(document.getElementById('cfg-bestof').value) || 5;
-            total_sets_to_win = Math.floor(best_of_sets / 2) + 1;
-            
-            max_timeouts_per_player = parseInt(document.getElementById('cfg-timeouts').value) ?? 1;
-            p1_timeouts_left = max_timeouts_per_player;
-            p2_timeouts_left = max_timeouts_per_player;
-
-            max_challenges_per_player = parseInt(document.getElementById('cfg-challenges').value) ?? 2;
-            p1_challenges_left = max_challenges_per_player;
-            p2_challenges_left = max_challenges_per_player;
-
-            document.getElementById('setup-modal').classList.remove('active');
-            updateUI();
-        }
-
-        // Timer Logic
-        function togglePause() {
-            if (is_paused) {
-                timer_start_timestamp = Date.now();
-                is_paused = false;
-                timer_interval = setInterval(updateMatchTimer, 1000);
-            } else {
-                if (timer_start_timestamp) {
-                    accumulated_time += Math.floor((Date.now() - timer_start_timestamp) / 1000);
-                }
-                is_paused = true;
-                clearInterval(timer_interval);
-            }
-            updateMatchTimerDisplay();
-        }
-
-        function updateMatchTimer() {
-            updateMatchTimerDisplay();
-        }
-
-        function getFormattedMatchTime() {
-            let total_sec = accumulated_time;
-            if (!is_paused && timer_start_timestamp) {
-                total_sec += Math.floor((Date.now() - timer_start_timestamp) / 1000);
-            }
-            let hrs = Math.floor(total_sec / 3600);
-            let mins = Math.floor((total_sec % 3600) / 60);
-            let secs = total_sec % 60;
-
-            let pad = (n) => String(n).padStart(2, '0');
-            return hrs > 0 ? `${pad(hrs)}:${pad(mins)}:${pad(secs)}` : `${pad(mins)}:${pad(secs)}`;
-        }
-
-        function updateMatchTimerDisplay() {
-            let pause_status = is_paused ? " [PAUSED]" : "";
-            document.getElementById('match-timer-display').innerText = `Time: ${getFormattedMatchTime()}${pause_status}`;
-        }
-
-        // Voice Speech API Logic
-        function speakAsync(text) {
-            if (voice_mode === "off" || !('speechSynthesis' in window)) return;
-            
-            window.speechSynthesis.cancel(); // Clear previous speech queue
+        // --- 語音引擎 (Web Speech API) ---
+        function speak(text) {
+            if (voiceMode === "off" || !('speechSynthesis' in window)) return;
+            window.speechSynthesis.cancel();
             let msg = new SpeechSynthesisUtterance(text);
-            
-            if (voice_mode === "cantonese") {
-                msg.lang = "zh-HK";
-            } else {
-                msg.lang = "en-US";
-            }
+            msg.lang = voiceMode === "cantonese" ? "zh-HK" : "en-US";
             window.speechSynthesis.speak(msg);
         }
 
-        function toggleVoiceMode() {
-            if (voice_mode === "english") voice_mode = "cantonese";
-            else if (voice_mode === "cantonese") voice_mode = "off";
-            else voice_mode = "english";
-            
-            let btnTxt = voice_mode === "english" ? "English" : (voice_mode === "cantonese" ? "Cantonese" : "OFF");
-            document.getElementById('btn-voice').innerText = `🔊 Voice: ${btnTxt}`;
-        }
-
-        function toggleSayName() {
-            say_player_name = !say_player_name;
-            document.getElementById('btn-say-name').innerText = `🗣️ Say Name: ${say_player_name ? 'ON' : 'OFF'}`;
-        }
-
-        function toggleSaySwap() {
-            say_swap_voice = !say_swap_voice;
-            document.getElementById('btn-say-swap').innerText = `🔄 Switch Voice: ${say_swap_voice ? 'ON' : 'OFF'}`;
-        }
-
         function announceScore() {
-            if (voice_mode === "off" || game_over) return;
+            if (voiceMode === "off" || gameOver) return;
+            let sName = currentServer === 1 ? p1Name : p2Name;
+            let sScore = currentServer === 1 ? scoreP1 : scoreP2;
+            let rName = currentServer === 1 ? p2Name : p1Name;
+            let rScore = currentServer === 1 ? scoreP2 : scoreP1;
 
-            let s_name = current_server === 1 ? p1_name : p2_name;
-            let s_score = current_server === 1 ? score_p1 : score_p2;
-            let r_name = current_server === 1 ? p2_name : p1_name;
-            let r_score = current_server === 1 ? score_p2 : score_p1;
-
-            let msg = "";
-            if (voice_mode === "cantonese") {
-                msg = say_player_name ? `${s_name} ${s_score} 比 ${r_name} ${r_score}` : `${s_score} 比 ${r_score}`;
+            if (voiceMode === "cantonese") {
+                let msg = sayPlayerName ? `${sName} ${sScore} 比 ${rName} ${rScore}` : `${sScore} 比 ${rScore}`;
+                speak(msg);
             } else {
-                let s_str = s_score === 0 ? "Love" : s_score;
-                let r_str = r_score === 0 ? "Love" : r_score;
-                if (s_score === r_score) {
-                    msg = `${s_str} all`;
-                } else {
-                    msg = say_player_name ? `${s_name} ${s_str}, ${r_name} ${r_str}` : `${s_str}, ${r_str}`;
-                }
+                let sStr = sScore === 0 ? "Love" : sScore;
+                let rStr = rScore === 0 ? "Love" : rScore;
+                let msg = (sScore === rScore) ? `${sStr} all` : 
+                          (sayPlayerName ? `${sName} ${sStr}, ${rName} ${rStr}` : `${sStr}, ${rStr}`);
+                speak(msg);
             }
-            speakAsync(msg);
         }
 
-        function ordinalEng(n) {
-            let s = ["th", "st", "nd", "rd"];
-            let v = n % 100;
-            return n + (s[(v - 20) % 10] || s[v] || s[0]);
+        // --- 計分邏輯 ---
+        function updateServer() {
+            let total = scoreP1 + scoreP2;
+            let switches = (scoreP1 >= 10 && scoreP2 >= 10) ? (total - 20) : Math.floor(total / 2);
+            currentServer = (switches % 2 === 0) ? firstServer : (3 - firstServer);
         }
 
-        // Scoring Rules
         function checkGameOver() {
-            if ((score_p1 >= 11 && score_p2 < 10) || (score_p2 >= 11 && score_p1 < 10)) return true;
-            if (score_p1 >= 10 && score_p2 >= 10 && Math.abs(score_p1 - score_p2) >= 2) return true;
+            if ((scoreP1 >= 11 && scoreP2 < 10) || (scoreP2 >= 11 && scoreP1 < 10)) return true;
+            if (scoreP1 >= 10 && scoreP2 >= 10 && Math.abs(scoreP1 - scoreP2) >= 2) return true;
             return false;
         }
 
-        function updateServer() {
-            let total = score_p1 + score_p2;
-            let switches = (score_p1 >= 10 && score_p2 >= 10) ? (total - 20) : Math.floor(total / 2);
-            current_server = (switches % 2 === 0) ? first_server : (3 - first_server);
-        }
+        function addScore(player, pts = 1, isPenalty = false) {
+            if (gameOver || matchOver) return;
 
-        function processScoreChange() {
-            updateServer();
+            for (let i = 0; i < pts; i++) {
+                pointHistory.push(player);
+                if (player === 1) scoreP1++; else scoreP2++;
+            }
+
+            if (!isPenalty) updateServer();
+
             if (checkGameOver()) {
-                game_over = true;
-                let winner = score_p1 > score_p2 ? p1_name : p2_name;
-                if (voice_mode === "cantonese") {
-                    speakAsync(`${winner} 勝第 ${current_game} 局`);
-                } else {
-                    speakAsync(`Game, ${winner} win the ${ordinalEng(current_game)} game`);
-                }
-                document.getElementById('gameover-title').innerText = `🏆 Game ${current_game} Ended - ${winner} Wins!`;
-                document.getElementById('gameover-modal').classList.add('active');
+                gameOver = true;
+                let winner = scoreP1 > scoreP2 ? p1Name : p2Name;
+                speak(voiceMode === "english" ? `Game, ${winner} wins game ${currentGame}` : `第 ${currentGame} 局由 ${winner} 勝出`);
+                setTimeout(promptNextGame, 500);
             } else {
                 announceScore();
+                checkWttTrend();
             }
             updateUI();
-        }
-
-        function addScore(player) {
-            if (game_over) return;
-            if (player === 1) score_p1++;
-            else score_p2++;
-            processScoreChange();
         }
 
         function subScore(player) {
-            if (game_over) return;
-            if (player === 1 && score_p1 > 0) score_p1--;
-            if (player === 2 && score_p2 > 0) score_p2--;
-            processScoreChange();
-        }
-
-        function editPlayerName(player) {
-            let current = player === 1 ? p1_name : p2_name;
-            let new_name = prompt("Enter new player name:", current);
-            if (new_name && new_name.trim()) {
-                if (player === 1) p1_name = new_name.trim();
-                else p2_name = new_name.trim();
-                updateUI();
+            if (gameOver || matchOver) return;
+            if (player === 1 && scoreP1 > 0) {
+                scoreP1--;
+                if (pointHistory.length && pointHistory[pointHistory.length - 1] === 1) pointHistory.pop();
+            } else if (player === 2 && scoreP2 > 0) {
+                scoreP2--;
+                if (pointHistory.length && pointHistory[pointHistory.length - 1] === 2) pointHistory.pop();
             }
-        }
-
-        // Timeout & Challenge Actions
-        function useTimeout(player) {
-            if (player === 1 && p1_timeouts_left > 0) p1_timeouts_left--;
-            else if (player === 2 && p2_timeouts_left > 0) p2_timeouts_left--;
-            else return;
-
-            let pName = player === 1 ? p1_name : p2_name;
-            if (!is_paused) togglePause(); // Pause match timer
-
-            timeout_seconds_left = 60;
-            document.getElementById('timeout-countdown-display').innerText = `${timeout_seconds_left}s`;
-            document.getElementById('timeout-modal').classList.add('active');
-
-            if (voice_mode === "cantonese") speakAsync(`${pName} 暫停`);
-            else speakAsync(`Timeout called by ${pName}`);
-
-            timeout_interval = setInterval(() => {
-                timeout_seconds_left--;
-                document.getElementById('timeout-countdown-display').innerText = `${timeout_seconds_left}s`;
-                if (timeout_seconds_left <= 0) {
-                    closeTimeoutTimerOnly();
-                }
-            }, 1000);
-
+            updateServer();
+            announceScore();
             updateUI();
         }
 
-        function closeTimeoutTimerOnly() {
-            clearInterval(timeout_interval);
-            document.getElementById('timeout-modal').classList.remove('active');
-            if (voice_mode === "cantonese") speakAsync("時間到");
-            else speakAsync("Time");
+        // --- WTT 數據分析 ---
+        function checkWttTrend() {
+            let total = scoreP1 + scoreP2;
+            if (total > 0 && total % 4 === 0) {
+                let windowSize = total <= 4 ? 4 : (total <= 8 ? 8 : (total <= 16 ? 16 : 32));
+                let recent = pointHistory.slice(-windowSize);
+                let p1Pts = recent.filter(x => x === 1).length;
+                let p2Pts = recent.filter(x => x === 2).length;
+
+                let banner = document.getElementById("wtt-banner");
+                banner.innerText = `Last ${recent.length} points : ${p1Name} ${p1Pts} - ${p2Pts} ${p2Name}`;
+                banner.style.display = "block";
+                setTimeout(() => { banner.style.display = "none"; }, 6000);
+            }
+        }
+
+        // --- 單局結束處理 ---
+        function promptNextGame() {
+            let winner = scoreP1 > scoreP2 ? p1Name : p2Name;
+            
+            // 計算局耗時
+            let gameDurationSec = Math.floor((Date.now() - gameStartTime) / 1000);
+            let gm = Math.floor(gameDurationSec / 60).toString().padStart(2, '0');
+            let gs = (gameDurationSec % 60).toString().padStart(2, '0');
+            let durationStr = `${gm}:${gs}`;
+
+            let now = new Date();
+            matchHistory.push({
+                "Date": now.toISOString().split('T')[0],
+                "Start Time": now.toTimeString().split(' ')[0],
+                "Duration": durationStr, // 時間紀錄
+                "Game": `Game ${currentGame}`,
+                "Player A": p1Name,
+                "Score A": scoreP1,
+                "Score B": scoreP2,
+                "Player B": p2Name,
+                "Winner": winner
+            });
+
+            if (scoreP1 > scoreP2) setsP1++; else setsP2++;
+
+            if (setsP1 >= totalSetsToWin || setsP2 >= totalSetsToWin) {
+                let finalWinner = setsP1 > setsP2 ? p1Name : p2Name;
+                matchOver = true;
+                let winBanner = document.getElementById("win-banner");
+                winBanner.innerText = `🎉 【整場獲勝】 ${finalWinner} 贏得整場比賽！`;
+                winBanner.style.display = "block";
+                speak(voiceMode === "cantonese" ? `${finalWinner} 贏得整場比賽` : `${finalWinner} wins the match`);
+                alert(`🎉 ${finalWinner} 贏得整場比賽！`);
+                updateUI();
+                return;
+            }
+
+            let swap = confirm(`${winner} 贏得第 ${currentGame} 局！\n下一局是否交換場地？`);
+            let nextFirstServer = 3 - firstServer;
+
+            if (swap) {
+                [p1Name, p2Name] = [p2Name, p1Name];
+                [setsP1, setsP2] = [setsP2, setsP1];
+                [p1Timeouts, p2Timeouts] = [p2Timeouts, p1Timeouts];
+                [p1Challenges, p2Challenges] = [p2Challenges, p1Challenges];
+                [p1FoulCount, p2FoulCount] = [p2FoulCount, p1FoulCount];
+                [p1Yellow, p2Yellow] = [p2Yellow, p1Yellow];
+                [p1Red, p2Red] = [p2Red, p1Red];
+
+                firstServer = 3 - nextFirstServer;
+                if (saySwapVoice) speak(voiceMode === "english" ? "Switch sides" : "雙方換邊");
+            } else {
+                firstServer = nextFirstServer;
+            }
+
+            currentServer = firstServer;
+            scoreP1 = 0; scoreP2 = 0;
+            pointHistory = [];
+            currentGame++;
+            gameStartTime = Date.now();
+            gameOver = false;
+            updateUI();
+        }
+
+        // --- 犯規與卡片系統 ---
+        function issueCard(player, cardType) {
+            let pName = player === 1 ? p1Name : p2Name;
+            let cardName = cardType === "yellow" ? "黃牌" : "紅牌";
+            if (!confirm(`確定要給 ${pName} 出示 ${cardName} 嗎？`)) return;
+
+            let foulNum = (player === 1) ? ++p1FoulCount : ++p2FoulCount;
+            let opponent = player === 1 ? 2 : 1;
+            let opponentName = player === 1 ? p2Name : p1Name;
+
+            if (foulNum === 1) {
+                alert(`[第1次犯規]\n${pName} 口頭警告（不發牌，不罰分）。`);
+                speak(voiceMode === "english" ? `Warning to ${pName}` : `${pName} 口頭警告`);
+            } else if (foulNum === 2) {
+                if (player === 1) p1Yellow++; else p2Yellow++;
+                alert(`[第2次犯規]\n${pName} 出示黃牌警告（不罰分）。`);
+                speak(voiceMode === "english" ? `Yellow card to ${pName}` : `${pName} 黃牌警告`);
+            } else if (foulNum === 3) {
+                if (player === 1) { p1Yellow++; p1Red++; } else { p2Yellow++; p2Red++; }
+                alert(`[第3次犯規]\n${pName} 出示黃牌+紅牌！\n對手 ${opponentName} 得 1 分。`);
+                speak(voiceMode === "english" ? `Penalty point to ${opponentName}` : `罰分，${opponentName} 加一分`);
+                addScore(opponent, 1, true);
+            } else if (foulNum === 4) {
+                if (player === 1) { p1Yellow++; p1Red++; } else { p2Yellow++; p2Red++; }
+                alert(`[第4次犯規]\n${pName} 出示黃牌+紅牌！\n對手 ${opponentName} 得 2 分。`);
+                speak(voiceMode === "english" ? `Penalty two points to ${opponentName}` : `罰分，${opponentName} 加兩分`);
+                addScore(opponent, 2, true);
+            } else {
+                if (player === 1) p1Red++; else p2Red++;
+                alert(`[第5次犯規]\n${pName} 被取消資格！\n對手 ${opponentName} 直接獲得整場比賽勝利。`);
+                gameOver = true; matchOver = true;
+                let winBanner = document.getElementById("win-banner");
+                winBanner.innerText = `🏆 [整場比賽獲勝] ${opponentName} 贏得整場比賽！`;
+                winBanner.style.display = "block";
+            }
+            updateUI();
+        }
+
+        // --- 挑戰 & 暫停 ---
+        function triggerTimeout(player) {
+            if (player === 1 && p1Timeouts > 0) { p1Timeouts--; var tName = p1Name; }
+            else if (player === 2 && p2Timeouts > 0) { p2Timeouts--; var tName = p2Name; }
+            else return;
+
+            document.getElementById("timeout-player-text").innerText = `Requested by: ${tName}`;
+            document.getElementById("timeout-overlay").style.display = "flex";
+            timeoutRemaining = 60;
+            document.getElementById("timeout-timer").innerText = "60s";
+
+            speak(voiceMode === "english" ? `Timeout called by ${tName}` : `${tName} 請求暫停`);
+
+            timeoutInterval = setInterval(() => {
+                timeoutRemaining--;
+                document.getElementById("timeout-timer").innerText = `${timeoutRemaining}s`;
+                if (timeoutRemaining <= 0) finishTimeout();
+            }, 1000);
+            updateUI();
+        }
+
+        function finishTimeout() {
+            clearInterval(timeoutInterval);
+            document.getElementById("timeout-overlay").style.display = "none";
+            speak(voiceMode === "english" ? "Time" : "時間到");
         }
 
         function useChallenge(player) {
-            let pName = player === 1 ? p1_name : p2_name;
-            let rem = player === 1 ? p1_challenges_left : p2_challenges_left;
+            let pName = player === 1 ? p1Name : p2Name;
+            let rem = player === 1 ? p1Challenges : p2Challenges;
             if (rem <= 0) return;
 
-            challenging_player = player;
-            document.getElementById('challenge-modal-title').innerText = `👁️ Challenge by ${pName}`;
-            document.getElementById('challenge-modal').classList.add('active');
+            speak(voiceMode === "english" ? `Challenge called by ${pName}` : `${pName} 提出挑戰`);
+            let res = confirm(`👁️ ${pName} 申請鷹眼挑戰！\n挑戰是否成功？`);
 
-            if (voice_mode === "cantonese") speakAsync(`${pName} 挑戰`);
-            else speakAsync(`Challenge called by ${pName}`);
-        }
-
-        function processChallengeResult(is_successful) {
-            document.getElementById('challenge-modal').classList.remove('active');
-
-            if (!is_successful) {
-                if (challenging_player === 1) p1_challenges_left--;
-                else p2_challenges_left--;
+            if (!res) {
+                if (player === 1) p1Challenges--; else p2Challenges--;
             }
 
-            let rem_count = challenging_player === 1 ? p1_challenges_left : p2_challenges_left;
-            let msg = "";
-
-            if (voice_mode === "cantonese") {
-                msg = is_successful ? `挑戰成功，還剩 ${rem_count} 次挑戰機會` : `挑戰不成功，還剩 ${rem_count} 次挑戰機會`;
-            } else {
-                let resPrefix = is_successful ? "Challenge successful" : "Challenge unsuccessful";
-                let remStr = rem_count === 0 ? "no challenges remaining" : (rem_count === 1 ? "1 challenge remaining" : `${rem_count} challenges remaining`);
-                msg = `${resPrefix}, ${remStr}`;
-            }
-            speakAsync(msg);
+            let left = player === 1 ? p1Challenges : p2Challenges;
+            let status = res ? (voiceMode === "english" ? "Challenge successful" : "挑戰成功") : 
+                               (voiceMode === "english" ? "Challenge unsuccessful" : "挑戰失敗");
+            let remText = left === 0 ? (voiceMode === "english" ? "no challenge remaining" : "冇剩餘挑戰機會") : 
+                                       (voiceMode === "english" ? `${left} challenges remaining` : `仲有 ${left} 次挑戰機會`);
+            speak(`${status}，${remText}`);
             updateUI();
         }
 
-        function nextGame(swap_sides) {
-            document.getElementById('gameover-modal').classList.remove('active');
-            let winner = score_p1 > score_p2 ? p1_name : p2_name;
-
-            // Record History
-            let now = new Date();
-            match_history.push({
-                "Date": now.toISOString().split('T')[0],
-                "Time": now.toTimeString().split(' ')[0],
-                "Match Duration": getFormattedMatchTime(),
-                "Game": `Game ${current_game}`,
-                "Player A": p1_name, "Score A": score_p1,
-                "Score B": score_p2, "Player B": p2_name,
-                "Winner": winner, "Switch Sides": swap_sides ? "Yes" : "No"
-            });
-
-            if (score_p1 > score_p2) sets_p1++;
-            else sets_p2++;
-
-            if (sets_p1 >= total_sets_to_win || sets_p2 >= total_sets_to_win) {
-                match_over = true;
-                let final_winner = sets_p1 > sets_p2 ? p1_name : p2_name;
-                if (voice_mode === "cantonese") speakAsync(`比賽結束，${final_winner} 獲得最終勝利！`);
-                else speakAsync(`Match over, ${final_winner} win!`);
-                alert(`🎉 Match Over! ${final_winner} wins the match!`);
-                return;
-            }
-
-            if (swap_sides) {
-                [p1_name, p2_name] = [p2_name, p1_name];
-                [sets_p1, sets_p2] = [sets_p2, sets_p1];
-                [p1_timeouts_left, p2_timeouts_left] = [p2_timeouts_left, p1_timeouts_left];
-                [p1_challenges_left, p2_challenges_left] = [p2_challenges_left, p1_challenges_left];
-                if (say_swap_voice) {
-                    speakAsync(voice_mode === "cantonese" ? "雙方轉場" : "Switch sides");
-                }
-            }
-
-            score_p1 = 0;
-            score_p2 = 0;
-            current_game++;
-            first_server = 3 - first_server;
-            current_server = first_server;
-            game_over = false;
-
-            updateUI();
-        }
-
-        // Export Excel using SheetJS
+        // --- Excel 導出功能 ---
         function exportExcel() {
-            if (match_history.length === 0) {
-                alert("No match records available to export!");
+            if (matchHistory.length === 0) {
+                alert("沒有比賽紀錄可導出！");
                 return;
             }
 
-            let ws = XLSX.utils.json_to_sheet(match_history);
+            // 建立 WorkSheet & WorkBook (使用 SheetJS)
+            let ws = XLSX.utils.json_to_sheet(matchHistory, {
+                header: ["Date", "Start Time", "Duration", "Game", "Player A", "Score A", "Score B", "Player B", "Winner"]
+            });
             let wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Match Records");
 
-            let today = new Date().toISOString().slice(0,10).replace(/-/g,"");
-            XLSX.writeFile(wb, `TableTennis_Record_${today}.xlsx`);
-
-            match_history = [];
-            speakAsync("Excel saved");
-            alert("Match records exported successfully!");
+            // 自動存檔
+            let filename = `TableTennis_Record_${new Date().toISOString().replace(/[-:T.]/g, "").slice(0, 14)}.xlsx`;
+            XLSX.writeFile(wb, filename);
         }
 
-        // Update UI View
-        function updateUI() {
-            document.getElementById('match-info-display').innerText = 
-                `Game ${current_game} (Best of ${best_of_sets}) | Total Games (${sets_p1} : ${sets_p2})`;
-
-            document.getElementById('p1-name-display').innerText = `✏️ ${p1_name}`;
-            document.getElementById('p2-name-display').innerText = `✏️ ${p2_name}`;
-
-            document.getElementById('p1-score-display').innerText = score_p1;
-            document.getElementById('p2-score-display').innerText = score_p2;
-
-            document.getElementById('p1-serve').classList.toggle('active', current_server === 1 && !game_over);
-            document.getElementById('p2-serve').classList.toggle('active', current_server === 2 && !game_over);
-
-            let t1_btn = document.getElementById('p1-timeout-btn');
-            t1_btn.innerText = `⏸️ Timeout (${p1_timeouts_left})`;
-            t1_btn.disabled = p1_timeouts_left <= 0;
-
-            let t2_btn = document.getElementById('p2-timeout-btn');
-            t2_btn.innerText = `⏸️ Timeout (${p2_timeouts_left})`;
-            t2_btn.disabled = p2_timeouts_left <= 0;
-
-            let c1_btn = document.getElementById('p1-challenge-btn');
-            c1_btn.innerText = `👁️ Challenge (${p1_challenges_left})`;
-            c1_btn.disabled = p1_challenges_left <= 0;
-
-            let c2_btn = document.getElementById('p2-challenge-btn');
-            c2_btn.innerText = `👁️ Challenge (${p2_challenges_left})`;
-            c2_btn.disabled = p2_challenges_left <= 0;
+        // --- 設定編輯與 UI 更新 ---
+        function toggleVoice() {
+            let modes = ["cantonese", "english", "off"];
+            voiceMode = modes[(modes.indexOf(voiceMode) + 1) % modes.length];
+            document.getElementById("btn-voice").innerText = `🔊 語音: ${voiceMode.toUpperCase()}`;
         }
 
-        // Global Keyboard Hotkeys Mapping
-        window.addEventListener('keydown', (e) => {
-            if (document.querySelector('.modal-overlay.active')) return; // Block hotkeys inside modals
+        function toggleSayName() {
+            sayPlayerName = !sayPlayerName;
+            document.getElementById("btn-say-name").innerText = `🗣️ 報姓名: ${sayPlayerName ? "ON" : "OFF"}`;
+        }
 
-            switch(e.key) {
-                case "ArrowLeft": addScore(1); break;
-                case "ArrowRight": addScore(2); break;
-                case "ArrowUp": subScore(1); break;
-                case "ArrowDown": subScore(2); break;
-                case "p":
-                case "P": togglePause(); break;
-                case "e":
-                case "E": exportExcel(); break;
+        function toggleSaySwap() {
+            saySwapVoice = !saySwapVoice;
+            document.getElementById("btn-say-swap").innerText = `🔄 換邊提示: ${saySwapVoice ? "ON" : "OFF"}`;
+        }
+
+        function editPlayerNames() {
+            let p1 = prompt("請輸入 Player 1 姓名:", p1Name);
+            if (p1) p1Name = p1;
+            let p2 = prompt("請輸入 Player 2 姓名:", p2Name);
+            if (p2) p2Name = p2;
+            updateUI();
+        }
+
+        function editSingleName(player) {
+            if (player === 1) {
+                let p1 = prompt("請輸入 Player 1 姓名:", p1Name);
+                if (p1) p1Name = p1;
+            } else {
+                let p2 = prompt("請輸入 Player 2 姓名:", p2Name);
+                if (p2) p2Name = p2;
             }
+            updateUI();
+        }
+
+        function manualSwitchServe() {
+            currentServer = 3 - currentServer;
+            firstServer = currentServer;
+            speak(voiceMode === "english" ? "Service changed" : "換發球");
+            updateUI();
+        }
+
+        function togglePause() {
+            if (isPaused) {
+                accumulatedPauseTime += Date.now() - pauseStartTime;
+                isPaused = false;
+                document.getElementById("btn-pause").innerText = "⏸️ 暫停計時";
+            } else {
+                pauseStartTime = Date.now();
+                isPaused = true;
+                document.getElementById("btn-pause").innerText = "▶️ 恢復計時";
+            }
+        }
+
+        function updateUI() {
+            document.getElementById("p1-name-display").innerText = `✏️ ${p1Name}`;
+            document.getElementById("p2-name-display").innerText = `✏️ ${p2Name}`;
+            document.getElementById("p1-score-display").innerText = scoreP1;
+            document.getElementById("p2-score-display").innerText = scoreP2;
+
+            document.getElementById("game-info").innerText = 
+                `Game ${currentGame} (Best of ${bestOfSets}) | Total Games (${setsP1} : ${setsP2})`;
+
+            // 發球標籤
+            document.getElementById("p1-serve").className = `serve-badge ${currentServer === 1 && !gameOver ? 'active' : ''}`;
+            document.getElementById("p2-serve").className = `serve-badge ${currentServer === 2 && !gameOver ? 'active' : ''}`;
+
+            // 按鈕狀態
+            document.getElementById("p1-timeout-btn").innerText = `⏸️ Timeout (${p1Timeouts})`;
+            document.getElementById("p1-timeout-btn").disabled = p1Timeouts <= 0;
+            document.getElementById("p1-challenge-btn").innerText = `👁️ Challenge (${p1Challenges})`;
+            document.getElementById("p1-challenge-btn").disabled = p1Challenges <= 0;
+
+            document.getElementById("p2-timeout-btn").innerText = `⏸️ Timeout (${p2Timeouts})`;
+            document.getElementById("p2-timeout-btn").disabled = p2Timeouts <= 0;
+            document.getElementById("p2-challenge-btn").innerText = `👁️ Challenge (${p2Challenges})`;
+            document.getElementById("p2-challenge-btn").disabled = p2Challenges <= 0;
+
+            document.getElementById("btn-switch-serve").style.display = (gameOver || matchOver) ? "inline-block" : "none";
+
+            // 渲染黃/紅牌
+            renderCards("p1-cards", p1Yellow, p1Red);
+            renderCards("p2-cards", p2Yellow, p2Red);
+        }
+
+        function renderCards(containerId, yellow, red) {
+            let container = document.getElementById(containerId);
+            container.innerHTML = "";
+            if (yellow > 0) {
+                let div = document.createElement("div");
+                div.className = "penalty-card";
+                div.style.backgroundColor = "#F5C81E";
+                div.innerText = yellow > 1 ? yellow : "";
+                container.appendChild(div);
+            }
+            if (red > 0) {
+                let div = document.createElement("div");
+                div.className = "penalty-card";
+                div.style.backgroundColor = "#EB3232";
+                div.style.color = "white";
+                div.innerText = red > 1 ? red : "";
+                container.appendChild(div);
+            }
+        }
+
+        // 全局比賽計時器
+        setInterval(() => {
+            let totalSec = isPaused ? 
+                Math.floor((pauseStartTime - matchStartTime - accumulatedPauseTime) / 1000) :
+                Math.floor((Date.now() - matchStartTime - accumulatedPauseTime) / 1000);
+            
+            totalSec = Math.max(0, totalSec);
+            let m = Math.floor(totalSec / 60).toString().padStart(2, '0');
+            let s = (totalSec % 60).toString().padStart(2, '0');
+            document.getElementById("match-timer").innerText = `Time: ${m}:${s} ${isPaused ? '(PAUSED)' : ''}`;
+        }, 1000);
+
+        // 鍵盤快捷鍵監聽
+        window.addEventListener('keydown', (e) => {
+            if (e.key === 'ArrowLeft' || e.key === 'a') addScore(1);
+            else if (e.key === 'ArrowUp' || e.key === 'w') subScore(1);
+            else if (e.key === 'ArrowRight' || e.key === 'd') addScore(2);
+            else if (e.key === 'ArrowDown') subScore(2);
+            else if (e.key.toLowerCase() === 'p') togglePause();
+            else if (e.key.toLowerCase() === 's') manualSwitchServe();
         });
+
+        // 頁面初始化
+        updateUI();
     </script>
 </body>
 </html>
