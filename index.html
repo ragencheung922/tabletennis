@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-TW">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -135,10 +135,45 @@
 
         .serve-badge.active { visibility: visible; }
 
+        .player-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin: 15px 0;
+        }
+
+        /* 大尺寸國旗/Emoji 按鈕 */
+        .btn-emoji-select {
+            padding: 0;
+            border: 2px solid var(--text-color);
+            border-radius: 8px;
+            background-color: #F8F8F8;
+            cursor: pointer;
+            width: 56px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            transition: transform 0.1s;
+            overflow: hidden;
+            font-size: 26px;
+        }
+
+        .btn-emoji-select:hover {
+            background-color: #E8E8E8;
+            transform: scale(1.08);
+        }
+
+        .btn-emoji-select img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background-color: #fff;
+        }
+
         .player-name {
             font-size: 24px;
             font-weight: bold;
-            margin: 15px 0;
             cursor: pointer;
             padding: 5px 15px;
             border-radius: 8px;
@@ -200,7 +235,7 @@
             font-size: 24px;
         }
 
-        /* Timeout Overlay */
+        /* Overlays & Modals */
         .overlay {
             position: fixed;
             top: 0; left: 0; width: 100%; height: 100%;
@@ -218,6 +253,67 @@
             border: 5px solid var(--pause-color);
             text-align: center;
             width: 400px;
+        }
+
+        /* Emoji / 國旗選單與搜尋 */
+        .emoji-modal {
+            background: white;
+            padding: 20px;
+            border-radius: 16px;
+            border: 3px solid var(--text-color);
+            text-align: center;
+            max-width: 450px;
+            width: 90%;
+        }
+
+        .emoji-search-input {
+            width: 90%;
+            padding: 10px 14px;
+            font-size: 16px;
+            border: 2px solid #CCC;
+            border-radius: 8px;
+            margin-bottom: 12px;
+            outline: none;
+        }
+
+        .emoji-search-input:focus {
+            border-color: var(--p2-color);
+        }
+
+        .emoji-grid {
+            display: grid;
+            grid-template-columns: repeat(5, 1fr);
+            gap: 12px;
+            margin: 10px 0;
+            max-height: 280px;
+            overflow-y: auto;
+            padding: 5px;
+        }
+
+        .emoji-item {
+            height: 45px;
+            border-radius: 8px;
+            border: 1px solid #DDD;
+            cursor: pointer;
+            background: #FAF8F0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 28px;
+            transition: transform 0.1s;
+            overflow: hidden;
+        }
+
+        .emoji-item img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            background-color: #fff;
+        }
+
+        .emoji-item:hover {
+            background: #E0E0E0;
+            transform: scale(1.15);
         }
 
         .watermark {
@@ -255,7 +351,10 @@
                 <div class="cards-display" id="p1-cards"></div>
                 <div class="serve-badge" id="p1-serve">🏓 SERVING</div>
             </div>
-            <div class="player-name" id="p1-name-display" onclick="editSingleName(1)">✏️ Player 1</div>
+            <div class="player-row">
+                <button class="btn-emoji-select" id="p1-emoji-btn" onclick="openEmojiPicker(1)" title="選擇旗幟 / Emoji">🏓</button>
+                <div class="player-name" id="p1-name-display" onclick="editSingleName(1)">Player 1</div>
+            </div>
             <div class="score-box p1-score" onclick="addScore(1)" id="p1-score-display">0</div>
             <div class="control-btns">
                 <button onclick="addScore(1)">+1 (←)</button>
@@ -277,7 +376,10 @@
                 <div class="cards-display" id="p2-cards"></div>
                 <div class="serve-badge" id="p2-serve">🏓 SERVING</div>
             </div>
-            <div class="player-name" id="p2-name-display" onclick="editSingleName(2)">✏️ Player 2</div>
+            <div class="player-row">
+                <button class="btn-emoji-select" id="p2-emoji-btn" onclick="openEmojiPicker(2)" title="選擇旗幟 / Emoji">🏓</button>
+                <div class="player-name" id="p2-name-display" onclick="editSingleName(2)">Player 2</div>
+            </div>
             <div class="score-box p2-score" onclick="addScore(2)" id="p2-score-display">0</div>
             <div class="control-btns">
                 <button onclick="addScore(2)">+1 (→)</button>
@@ -292,7 +394,7 @@
         </div>
     </div>
 
-    <!-- Notification Banners -->
+    <!-- Banners -->
     <div id="wtt-banner" class="banner wtt-banner"></div>
     <div id="win-banner" class="banner win-banner"></div>
 
@@ -309,14 +411,31 @@
         </div>
     </div>
 
+    <!-- Emoji / Flag Picker Overlay -->
+    <div class="overlay" id="emoji-overlay">
+        <div class="emoji-modal">
+            <h3 style="margin-top:0; margin-bottom: 10px;">選擇旗幟 / Emoji</h3>
+            <input type="text" id="emoji-search" class="emoji-search-input" placeholder="🔍 搜尋（例如：台灣、日本、馬來西亞、火）" oninput="filterEmojis()">
+            <div class="emoji-grid" id="emoji-grid"></div>
+            <div style="margin-top: 10px;">
+                <button onclick="customEmojiInput()" style="margin-right: 5px;">輸入自訂 Emoji</button>
+                <button onclick="closeEmojiPicker()">取消</button>
+            </div>
+        </div>
+    </div>
+
     <script>
-        // --- Setup Parameters ---
+        // Setup Parameters
         let bestOfSets = parseInt(prompt("Best of how many games? (e.g. 5)", "5")) || 5;
         let totalSetsToWin = Math.floor(bestOfSets / 2) + 1;
         let maxTimeouts = parseInt(prompt("Timeouts per player:", "1")) || 1;
         let maxChallenges = parseInt(prompt("Challenges per player:", "2")) || 2;
 
         let p1Name = "Player 1", p2Name = "Player 2";
+        let p1Item = { type: 'emoji', value: '🏓' };
+        let p2Item = { type: 'emoji', value: '🏓' };
+        let activeEmojiPlayer = null;
+
         let scoreP1 = 0, scoreP2 = 0;
         let setsP1 = 0, setsP2 = 0;
         let currentGame = 1;
@@ -336,15 +455,127 @@
         let matchHistory = [];
         let gameOver = false, matchOver = false;
 
-        // Voice Settings
-        let voiceMode = "english"; // 'english', 'cantonese', 'off'
+        let voiceMode = "english"; 
         let sayPlayerName = true;
         let saySwapVoice = true;
 
-        // Timeout Timer
         let timeoutInterval = null, timeoutRemaining = 60;
 
-        // --- Speech Engine (Web Speech API) ---
+        // 使用 Data URI 格式的 SVG 奧會旗 (完全免外部載入，絕不破圖)
+        const tpeFlagSvg = "data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 900 600'><rect width='900' height='600' fill='white'/><path d='M450,110 C500,110 520,150 560,160 C600,170 630,130 660,170 C690,210 660,250 680,290 C700,330 740,350 730,400 C720,450 670,460 650,500 C630,540 580,520 540,540 C500,560 470,510 450,510 C430,510 400,560 360,540 C320,520 270,540 250,500 C230,460 180,450 170,400 C160,350 200,330 220,290 C240,250 210,210 240,170 C270,130 300,170 340,160 C380,150 400,110 450,110 Z' fill='none' stroke='%23000099' stroke-width='14'/><path d='M450,125 C495,125 512,162 550,172 C588,182 615,145 642,182 C670,220 642,258 660,295 C678,332 715,350 706,396 C697,442 650,452 632,490 C615,528 568,509 530,528 C492,546 465,500 450,500 C435,500 408,546 370,528 C332,509 285,528 268,490 C250,452 203,442 194,396 C185,350 222,332 240,295 C258,258 230,220 258,182 C285,145 312,182 350,172 C388,162 405,125 450,125 Z' fill='none' stroke='%23DD0000' stroke-width='10'/><path d='M450,140 C490,140 505,175 540,185 C575,195 600,160 625,195 C650,230 625,265 640,300 C655,335 690,350 682,392 C675,434 630,444 615,480 C600,515 556,498 520,516 C484,533 460,490 450,490 C440,490 416,533 380,516 C344,498 300,515 285,480 C270,444 225,434 218,392 C210,350 245,335 260,300 C275,265 250,230 275,195 C300,160 325,195 360,185 C395,175 410,140 450,140 Z' fill='none' stroke='%23000099' stroke-width='10'/><circle cx='450' cy='230' r='35' fill='%23000099'/><g fill='%23000099'><polygon points='450,180 457,210 480,190 467,217 497,213 473,230 500,245 471,243 487,268 463,248 462,278 450,250 438,278 437,248 413,268 429,243 400,245 427,230 403,213 433,217 420,190 443,210'/></g><circle cx='450' cy='230' r='20' fill='white'/><circle cx='450' cy='230' r='16' fill='%23000099'/><g fill='none' stroke-width='7'><circle cx='370' cy='360' r='30' stroke='%230081C8'/><circle cx='450' cy='360' r='30' stroke='black'/><circle cx='530' cy='360' r='30' stroke='%23EE334E'/><circle cx='410' cy='390' r='30' stroke='%23FCB131'/><circle cx='490' cy='390' r='30' stroke='%2300A651'/></g></svg>";
+
+        // 國家/地區旗幟清單（含新增加的 5 個國家）
+        const flagList = [
+            { code: 'tw', name: '中華台北/台灣', keywords: '台灣 中華台北 奧會旗 taiwan chinese taipei tpe', url: tpeFlagSvg },
+            { code: 'jp', name: '日本', keywords: '日本 japan', url: 'https://flagcdn.com/w160/jp.png' },
+            { code: 'cn', name: '中國', keywords: '中國 china', url: 'https://flagcdn.com/w160/cn.png' },
+            { code: 'hk', name: '香港', keywords: '香港 hong kong', url: 'https://flagcdn.com/w160/hk.png' },
+            { code: 'mo', name: '澳門', keywords: '澳門 macao macau', url: 'https://flagcdn.com/w160/mo.png' },
+            { code: 'kr', name: '韓國', keywords: '韓國 南韓 korea', url: 'https://flagcdn.com/w160/kr.png' },
+            { code: 'de', name: '德國', keywords: '德國 germany', url: 'https://flagcdn.com/w160/de.png' },
+            { code: 'fr', name: '法國', keywords: '法國 france', url: 'https://flagcdn.com/w160/fr.png' },
+            { code: 'se', name: '瑞典', keywords: '瑞典 sweden', url: 'https://flagcdn.com/w160/se.png' },
+            { code: 'br', name: '巴西', keywords: '巴西 brazil', url: 'https://flagcdn.com/w160/br.png' },
+            { code: 'us', name: '美國', keywords: '美國 usa america', url: 'https://flagcdn.com/w160/us.png' },
+            { code: 'eg', name: '埃及', keywords: '埃及 egypt', url: 'https://flagcdn.com/w160/eg.png' },
+            { code: 'gb-eng', name: '英格蘭', keywords: '英格蘭 英國 england', url: 'https://flagcdn.com/w160/gb-eng.png' },
+            { code: 'ca', name: '加拿大', keywords: '加拿大 canada', url: 'https://flagcdn.com/w160/ca.png' },
+            { code: 'kp', name: '北韓', keywords: '北韓 朝鮮 north korea', url: 'https://flagcdn.com/w160/kp.png' },
+            { code: 'pt', name: '葡萄牙', keywords: '葡萄牙 portugal', url: 'https://flagcdn.com/w160/pt.png' },
+            { code: 'au', name: '澳洲', keywords: '澳洲 澳大利亞 australia', url: 'https://flagcdn.com/w160/au.png' },
+            { code: 'it', name: '義大利', keywords: '義大利 italy', url: 'https://flagcdn.com/w160/it.png' },
+            { code: 'nz', name: '紐西蘭', keywords: '紐西蘭 new zealand', url: 'https://flagcdn.com/w160/nz.png' },
+            { code: 'be', name: '比利時', keywords: '比利時 belgium', url: 'https://flagcdn.com/w160/be.png' },
+            { code: 'in', name: '印度', keywords: '印度 india', url: 'https://flagcdn.com/w160/in.png' },
+            { code: 'sg', name: '新加坡', keywords: '新加坡 singapore', url: 'https://flagcdn.com/w160/sg.png' },
+            { code: 'th', name: '泰國', keywords: '泰國 thailand', url: 'https://flagcdn.com/w160/th.png' },
+            { code: 'pl', name: '波蘭', keywords: '波蘭 poland', url: 'https://flagcdn.com/w160/pl.png' },
+            { code: 'dk', name: '丹麥', keywords: '丹麥 denmark', url: 'https://flagcdn.com/w160/dk.png' },
+            // 新增國家
+            { code: 'my', name: '馬來西亞', keywords: '馬來西亞 大馬 malaysia my', url: 'https://flagcdn.com/w160/my.png' },
+            { code: 'es', name: '西班牙', keywords: '西班牙 spain es', url: 'https://flagcdn.com/w160/es.png' },
+            { code: 'nl', name: '荷蘭', keywords: '荷蘭 netherlands holland nl', url: 'https://flagcdn.com/w160/nl.png' },
+            { code: 'ar', name: '阿根廷', keywords: '阿根廷 argentina ar', url: 'https://flagcdn.com/w160/ar.png' },
+            { code: 'ru', name: '俄羅斯', keywords: '俄羅斯 russia ru', url: 'https://flagcdn.com/w160/ru.png' }
+        ];
+
+        const emojiList = [
+            { type: 'emoji', value: '🏓', keywords: '乒乓球 桌球 pingpong' },
+            { type: 'emoji', value: '🥇', keywords: '金牌 第一 gold' },
+            { type: 'emoji', value: '🔥', keywords: '火 熱情 fire' },
+            { type: 'emoji', value: '⚡', keywords: '閃電 lightning' },
+            { type: 'emoji', value: '⭐', keywords: '星星 star' },
+            { type: 'emoji', value: '👑', keywords: '皇冠 國王 crown' },
+            { type: 'emoji', value: '🎯', keywords: '靶心 target' },
+            { type: 'emoji', value: '🏆', keywords: '獎盃 trophy' },
+            { type: 'emoji', value: '💪', keywords: '力量 muscle' },
+            { type: 'emoji', value: '😎', keywords: '酷 cool' }
+        ];
+
+        const masterList = [
+            ...flagList.map(f => ({
+                type: 'flag',
+                value: f.code,
+                url: f.url,
+                keywords: f.keywords
+            })),
+            ...emojiList
+        ];
+
+        function openEmojiPicker(player) {
+            activeEmojiPlayer = player;
+            document.getElementById("emoji-search").value = "";
+            renderEmojiGrid(masterList);
+            document.getElementById("emoji-overlay").style.display = "flex";
+        }
+
+        function closeEmojiPicker() {
+            document.getElementById("emoji-overlay").style.display = "none";
+            activeEmojiPlayer = null;
+        }
+
+        function renderEmojiGrid(items) {
+            let grid = document.getElementById("emoji-grid");
+            grid.innerHTML = "";
+            items.forEach(item => {
+                let div = document.createElement("div");
+                div.className = "emoji-item";
+                if (item.type === 'flag') {
+                    let img = document.createElement("img");
+                    img.src = item.url;
+                    img.alt = item.keywords;
+                    div.appendChild(img);
+                } else {
+                    div.innerText = item.value;
+                }
+                div.title = item.keywords;
+                div.onclick = () => selectItem(item);
+                grid.appendChild(div);
+            });
+        }
+
+        function filterEmojis() {
+            let query = document.getElementById("emoji-search").value.toLowerCase().trim();
+            if (!query) {
+                renderEmojiGrid(masterList);
+                return;
+            }
+            let filtered = masterList.filter(item => item.keywords.toLowerCase().includes(query));
+            renderEmojiGrid(filtered);
+        }
+
+        function selectItem(item) {
+            if (activeEmojiPlayer === 1) p1Item = item;
+            else if (activeEmojiPlayer === 2) p2Item = item;
+            closeEmojiPicker();
+            updateUI();
+        }
+
+        function customEmojiInput() {
+            let input = prompt("請輸入自訂 Emoji：");
+            if (input) selectItem({ type: 'emoji', value: input.trim(), keywords: 'custom' });
+        }
+
         function speak(text) {
             if (voiceMode === "off" || !('speechSynthesis' in window)) return;
             window.speechSynthesis.cancel();
@@ -372,7 +603,6 @@
             }
         }
 
-        // --- Scoring Logic ---
         function updateServer() {
             let total = scoreP1 + scoreP2;
             let switches = (scoreP1 >= 10 && scoreP2 >= 10) ? (total - 20) : Math.floor(total / 2);
@@ -421,7 +651,6 @@
             updateUI();
         }
 
-        // --- WTT Data Analysis ---
         function checkWttTrend() {
             let total = scoreP1 + scoreP2;
             if (total > 0 && total % 4 === 0) {
@@ -437,20 +666,18 @@
             }
         }
 
-        // --- Game Completion ---
         function promptNextGame() {
             let winner = scoreP1 > scoreP2 ? p1Name : p2Name;
             
             let gameDurationSec = Math.floor((Date.now() - gameStartTime) / 1000);
             let gm = Math.floor(gameDurationSec / 60).toString().padStart(2, '0');
             let gs = (gameDurationSec % 60).toString().padStart(2, '0');
-            let durationStr = `${gm}:${gs}`;
 
             let now = new Date();
             matchHistory.push({
                 "Date": now.toISOString().split('T')[0],
                 "Start Time": now.toTimeString().split(' ')[0],
-                "Duration": durationStr,
+                "Duration": `${gm}:${gs}`,
                 "Game": `Game ${currentGame}`,
                 "Player A": p1Name,
                 "Score A": scoreP1,
@@ -478,6 +705,7 @@
 
             if (swap) {
                 [p1Name, p2Name] = [p2Name, p1Name];
+                [p1Item, p2Item] = [p2Item, p1Item];
                 [setsP1, setsP2] = [setsP2, setsP1];
                 [p1Timeouts, p2Timeouts] = [p2Timeouts, p1Timeouts];
                 [p1Challenges, p2Challenges] = [p2Challenges, p1Challenges];
@@ -500,7 +728,6 @@
             updateUI();
         }
 
-        // --- Cards & Penalties ---
         function issueCard(player, cardType) {
             let pName = player === 1 ? p1Name : p2Name;
             let cardName = cardType === "yellow" ? "Yellow Card" : "Red Card";
@@ -511,34 +738,33 @@
             let opponentName = player === 1 ? p2Name : p1Name;
 
             if (foulNum === 1) {
-                alert(`[1st Foul]\n${pName} Official Warning (No card, no penalty point).`);
+                alert(`[1st Foul]\n${pName} Official Warning.`);
                 speak(`Warning to ${pName}`);
             } else if (foulNum === 2) {
                 if (player === 1) p1Yellow++; else p2Yellow++;
-                alert(`[2nd Foul]\n${pName} Yellow Card issued (No penalty point).`);
+                alert(`[2nd Foul]\n${pName} Yellow Card.`);
                 speak(`Yellow card to ${pName}`);
             } else if (foulNum === 3) {
                 if (player === 1) { p1Yellow++; p1Red++; } else { p2Yellow++; p2Red++; }
-                alert(`[3rd Foul]\n${pName} Yellow + Red Card issued!\nPenalty point awarded to ${opponentName}.`);
+                alert(`[3rd Foul]\n${pName} Yellow + Red Card!\nPenalty point to ${opponentName}.`);
                 speak(`Penalty point to ${opponentName}`);
                 addScore(opponent, 1, true);
             } else if (foulNum === 4) {
                 if (player === 1) { p1Yellow++; p1Red++; } else { p2Yellow++; p2Red++; }
-                alert(`[4th Foul]\n${pName} Yellow + Red Card issued!\n2 Penalty points awarded to ${opponentName}.`);
+                alert(`[4th Foul]\n${pName} Yellow + Red Card!\n2 Penalty points to ${opponentName}.`);
                 speak(`Penalty two points to ${opponentName}`);
                 addScore(opponent, 2, true);
             } else {
                 if (player === 1) p1Red++; else p2Red++;
-                alert(`[5th Foul]\n${pName} Disqualified!\n${opponentName} wins the match.`);
+                alert(`[5th Foul]\n${pName} Disqualified!`);
                 gameOver = true; matchOver = true;
                 let winBanner = document.getElementById("win-banner");
-                winBanner.innerText = `🏆 [MATCH WINNER] ${opponentName} wins by disqualification!`;
+                winBanner.innerText = `🏆 ${opponentName} wins by disqualification!`;
                 winBanner.style.display = "block";
             }
             updateUI();
         }
 
-        // --- Challenges & Timeouts ---
         function triggerTimeout(player) {
             if (player === 1 && p1Timeouts > 0) { p1Timeouts--; var tName = p1Name; }
             else if (player === 2 && p2Timeouts > 0) { p2Timeouts--; var tName = p2Name; }
@@ -578,30 +804,21 @@
             }
 
             let left = player === 1 ? p1Challenges : p2Challenges;
-            let status = res ? "Challenge successful" : "Challenge unsuccessful";
-            let remText = left === 0 ? "no challenges remaining" : `${left} challenge${left > 1 ? 's' : ''} remaining`;
-            speak(`${status}, ${remText}`);
+            speak(`${res ? "Challenge successful" : "Challenge unsuccessful"}, ${left} remaining`);
             updateUI();
         }
 
-        // --- Excel Export ---
         function exportExcel() {
             if (matchHistory.length === 0) {
                 alert("No match records to export!");
                 return;
             }
-
-            let ws = XLSX.utils.json_to_sheet(matchHistory, {
-                header: ["Date", "Start Time", "Duration", "Game", "Player A", "Score A", "Score B", "Player B", "Winner"]
-            });
+            let ws = XLSX.utils.json_to_sheet(matchHistory);
             let wb = XLSX.utils.book_new();
             XLSX.utils.book_append_sheet(wb, ws, "Match Records");
-
-            let filename = `TableTennis_Record_${new Date().toISOString().replace(/[-:T.]/g, "").slice(0, 14)}.xlsx`;
-            XLSX.writeFile(wb, filename);
+            XLSX.writeFile(wb, `TableTennis_Record_${Date.now()}.xlsx`);
         }
 
-        // --- Controls & UI Updates ---
         function toggleVoice() {
             let modes = ["english", "cantonese", "off"];
             voiceMode = modes[(modes.indexOf(voiceMode) + 1) % modes.length];
@@ -656,20 +873,34 @@
             }
         }
 
+        function renderDisplayButton(btnId, item) {
+            let btn = document.getElementById(btnId);
+            btn.innerHTML = "";
+            if (item.type === 'flag') {
+                let img = document.createElement("img");
+                img.src = item.url;
+                btn.appendChild(img);
+            } else {
+                btn.innerText = item.value;
+            }
+        }
+
         function updateUI() {
-            document.getElementById("p1-name-display").innerText = `✏️ ${p1Name}`;
-            document.getElementById("p2-name-display").innerText = `✏️ ${p2Name}`;
+            document.getElementById("p1-name-display").innerText = p1Name;
+            document.getElementById("p2-name-display").innerText = p2Name;
+
+            renderDisplayButton("p1-emoji-btn", p1Item);
+            renderDisplayButton("p2-emoji-btn", p2Item);
+
             document.getElementById("p1-score-display").innerText = scoreP1;
             document.getElementById("p2-score-display").innerText = scoreP2;
 
             document.getElementById("game-info").innerText = 
                 `Game ${currentGame} (Best of ${bestOfSets}) | Total Games (${setsP1} : ${setsP2})`;
 
-            // Serving Badges
             document.getElementById("p1-serve").className = `serve-badge ${currentServer === 1 && !gameOver ? 'active' : ''}`;
             document.getElementById("p2-serve").className = `serve-badge ${currentServer === 2 && !gameOver ? 'active' : ''}`;
 
-            // Buttons State
             document.getElementById("p1-timeout-btn").innerText = `⏸️ Timeout (${p1Timeouts})`;
             document.getElementById("p1-timeout-btn").disabled = p1Timeouts <= 0;
             document.getElementById("p1-challenge-btn").innerText = `👁️ Challenge (${p1Challenges})`;
@@ -682,7 +913,6 @@
 
             document.getElementById("btn-switch-serve").style.display = (gameOver || matchOver) ? "inline-block" : "none";
 
-            // Penalty Cards
             renderCards("p1-cards", p1Yellow, p1Red);
             renderCards("p2-cards", p2Yellow, p2Red);
         }
@@ -707,7 +937,6 @@
             }
         }
 
-        // Global Match Clock Timer
         setInterval(() => {
             let totalSec = isPaused ? 
                 Math.floor((pauseStartTime - matchStartTime - accumulatedPauseTime) / 1000) :
@@ -719,8 +948,9 @@
             document.getElementById("match-timer").innerText = `Time: ${m}:${s} ${isPaused ? '(PAUSED)' : ''}`;
         }, 1000);
 
-        // Keyboard Shortcuts
         window.addEventListener('keydown', (e) => {
+            if (document.activeElement.tagName === 'INPUT') return;
+
             if (e.key === 'ArrowLeft' || e.key === 'a') addScore(1);
             else if (e.key === 'ArrowUp' || e.key === 'w') subScore(1);
             else if (e.key === 'ArrowRight' || e.key === 'd') addScore(2);
@@ -729,7 +959,6 @@
             else if (e.key.toLowerCase() === 's') manualSwitchServe();
         });
 
-        // Initialize UI
         updateUI();
     </script>
 </body>
